@@ -1,0 +1,128 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+df = pd.read_csv('API_19_DS2_en_csv_v2_4700503.csv')
+print('Total No of Rows are: ', df.shape[0])
+print('Total No of Columns are: ', df.shape[1])
+
+# Removing some unused columns 
+"""df = df.drop(['unnamed: 66'], axis=1)"""
+
+# Selecting only data from 1991 to 2021.
+df = df[['Country Name', 'Country Code', 'Indicator Name', 'Indicator Code',
+       '1991', '1992', '1993', '1994', '1995',
+       '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
+       '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013',
+       '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021']]
+
+# Some indicators I would like to use
+climate_change_indicators = ['Access to electricity (% of population)','Agricultural land (% of land area)', 'Agricultural irrigated land (% of total agricultural land)', 
+                             'Arable land (% of land area)','Forest area (% of land area)', 'Urban population (% of total population)', 
+                             'Population growth (annual %)','Population, total','CO2 emissions (kt)','Electric power consumption (kWh per capita)',
+                             'Energy use (kg of oil equivalent) per $1,000 GDP (constant 2017 PPP)' ]
+
+# Some Countries I would like to go with
+countries = ['United Arab Emirates','Argentina','Austria','Belgium','China','Germany','France',
+             'Japan','New Zealand','Australia','United States']
+
+def data_ingestion_manipulation(df, indicator):
+    """
+    Function that will take dataframe and any indicator and will provide us
+    2 dataframes. 1 dataframe will have Years as columns and 2nd dataframe will have
+    Countries as Columns.
+    
+    """
+    df1 = df[df['Indicator Name'] == indicator]
+    df1 = df1.drop(['Country Code','Indicator Name','Indicator Code'], axis=1)
+    df1.index = df1.iloc[:, 0]
+    df2 = df1.transpose()
+    df2.columns = df2.iloc[0]
+    df2 = df2.drop(['Country Name'])
+    df1 = df1.drop(['Country Name'], axis=1)
+    return df1, df2
+    
+# Calling the indicators which I have selected earlier and it will plot the results of selected countries
+for indicator in climate_change_indicators:
+    df1, df2 = data_ingestion_manipulation(df, indicator)
+    for i in countries:
+        plt.plot(df2[i], label=i)
+
+    plt.title(indicator)
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.xticks(rotation=90)
+    plt.show()
+
+
+# Plot for Arable Land vs Forest Land
+df1, df2 = data_ingestion_manipulation(df, 'Arable land (% of land area)')
+df3, df4 = data_ingestion_manipulation(df, 'Forest area (% of land area)')
+
+plt.scatter(df1.sum(axis=1),df3.sum(axis=1))
+plt.xlabel('Arable Land')
+plt.ylabel('Forest Land')
+plt.title('Arable vs Forest Land')
+plt.show()
+
+# Plot for Access to electricity vs Electric power consumption
+df1, df2 = data_ingestion_manipulation(df, 'Access to electricity (% of population)')
+df3, df4 = data_ingestion_manipulation(df, 'Electric power consumption (kWh per capita)')
+
+plt.scatter(df1.sum(axis=1),df3.sum(axis=1))
+plt.xlabel('Access to electricity')
+plt.ylabel('Electric power consumption')
+plt.title('Access to electricity vs Electric power consumption')
+plt.show()
+
+
+# Plot for Energy use vs CO2 emissions
+df1, df2 = data_ingestion_manipulation(df, 'Energy use (kg of oil equivalent) per $1,000 GDP (constant 2017 PPP)')
+df3, df4 = data_ingestion_manipulation(df, 'CO2 emissions (kt)')
+
+plt.scatter(df1.sum(axis=1),df3.sum(axis=1))
+plt.xlabel('Energy use (kg of oil equivalent) per $1,000 GDP (constant 2017 PPP)')
+plt.ylabel('CO2 emissions')
+plt.title('Energy use vs CO2 emissions')
+plt.show()
+
+
+# creating Correlation Graph.
+df['all mean'] = df[['1991', '1992', '1993', '1994', '1995', '1996', '1997', '1998',
+       '1999', '2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007',
+       '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016',
+       '2017', '2018', '2019', '2020', '2021']].mean(axis=1)
+
+df1 = df.groupby(['Country Name','Indicator Name'])['all mean'].mean().unstack()
+
+plt.figure(figsize=(10,7))
+sns.heatmap(df1[climate_change_indicators].corr(), cmap='viridis', linewidths=.5, annot=True)
+
+print('Brief Statistical Description')
+print(df1[climate_change_indicators].describe())
+
+
+# Plot that will show the Top 20 Countries in various indicators
+for i in df1[climate_change_indicators]:
+    df1[i].sort_values(ascending=False)[:20].plot(kind='bar')
+    plt.xlabel(i)
+    plt.title('Top 20 countries with respect to ' + str(i))
+    plt.show()
+    
+
+# Plot that will show the Electricity Production by different means.
+df_electricity_prod =  df[df['Indicator Name'].isin(['Electricity production from oil sources (% of total)',
+                                                       'Electricity production from nuclear sources (% of total)',
+                                                       'Electricity production from natural gas sources (% of total)',
+                                                       'Electricity production from hydroelectric sources (% of total)',
+                                                       'Electricity production from coal sources (% of total)'])]
+
+df_electricity_prod.groupby(['Country Name','Indicator Name'])['all mean'].mean().unstack().mean().plot(kind='bar')
+
+
+
+# Plot that will show the CO2 Emissions by different means.
+df_co2_emissions =  df[df['Indicator Name'].isin(['CO2 emissions from solid fuel consumption (% of total)',
+                                                     'CO2 emissions from liquid fuel consumption (% of total)',
+                                                     'CO2 emissions from gaseous fuel consumption (% of total)'])]
+
+df_co2_emissions.groupby(['Country Name','Indicator Name'])['all mean'].mean().unstack().mean().plot(kind='bar')
